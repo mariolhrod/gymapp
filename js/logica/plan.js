@@ -9,10 +9,11 @@ export function siguienteDia(plan, historial) {
 }
 
 // Última vez que se hizo un ejercicio (en cualquier plan): { fecha, series } o null.
-export function ultimaVez(ejId, historial) {
+// saltarDescarga: para proponer peso se ignoran las semanas de descarga (se hicieron con la mitad a propósito).
+export function ultimaVez(ejId, historial, { saltarDescarga = false } = {}) {
   let mejor = null;
   for (const e of historial || []) {
-    if (e.terminado === false) continue;
+    if (e.terminado === false || (saltarDescarga && e.descarga)) continue;
     const x = (e.ejercicios || []).find((j) => j.ej === ejId && (j.series || []).some((s) => s.hecha));
     if (x && (!mejor || e.fecha > mejor.fecha)) mejor = { fecha: e.fecha, series: x.series };
   }
@@ -25,13 +26,20 @@ export function entrenosDeLaSemana(historial, hoy = new Date()) {
   const lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   const siguiente = new Date(lunes); siguiente.setDate(lunes.getDate() + 7);
   const iso = (x) => fechaISO(x);
-  return (historial || []).filter((e) => e.terminado !== false && e.fecha.slice(0, 10) >= iso(lunes) && e.fecha.slice(0, 10) < iso(siguiente)).length;
+  return (historial || []).filter((e) => { const d = diaLocal(e); return e.terminado !== false && d >= iso(lunes) && d < iso(siguiente); }).length;
 }
 
 export function fechaISO(d = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
+
+// Día del entreno en la hora del teléfono ('YYYY-MM-DD'). La fecha completa se guarda en UTC.
+export const diaLocal = (e) => e.dia || fechaISO(new Date(e.fecha));
+
+// Días enteros entre dos fechas 'YYYY-MM-DD' (sin efecto del cambio de hora).
+const utc = (s) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+export const diasEntre = (a, b) => Math.round((utc(b) - utc(a)) / 86400000);
 
 // Mejor serie (más kilos; a igualdad, más repeticiones) de cada ejercicio en todo el historial.
 export function marcasPersonales(historial) {

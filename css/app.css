@@ -72,7 +72,8 @@ input.mal { border-color: var(--rojo); }
 .check { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--borde2); background: none; cursor: pointer; font-weight: 700; }
 .check.si { background: var(--lima); border-color: var(--lima); color: #0e1013; }
 .reloj { font-size: 34px; font-weight: 700; color: var(--lima); font-variant-numeric: tabular-nums; }
-.puntos { display: flex; gap: 6px; flex-wrap: wrap; }
+.puntos { display: flex; gap: 0; flex-wrap: wrap; }
+.punto-btn { border: 0; background: none; padding: 0; width: 28px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .punto { width: 10px; height: 10px; border-radius: 5px; background: var(--borde2); }
 .punto.hecho { background: var(--lima); }
 .punto.actual { outline: 2px solid var(--lima); outline-offset: 2px; }
