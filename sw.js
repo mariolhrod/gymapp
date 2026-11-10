@@ -1,5 +1,5 @@
 // Generado por tools/generar-sw.mjs — no editar a mano.
-const VERSION = 'gym-18d648c9574f';
+const VERSION = 'gym-5d764aedde1a';
 const ARCHIVOS = [
  "./",
  "css/app.css",
