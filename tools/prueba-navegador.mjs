@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { arrancar } from './servidor.mjs';
 
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-const PUERTO = 8765, DEPURA = 9333, URL_APP = `http://127.0.0.1:${PUERTO}/`;
+// GYM_URL=https://… prueba la app publicada en lugar de la copia local.
+const PUERTO = 8765, DEPURA = 9333, URL_APP = process.env.GYM_URL || `http://127.0.0.1:${PUERTO}/`;
 const evid = fileURLToPath(new URL('../docs/evidencia/', import.meta.url)); mkdirSync(evid, { recursive: true });
 const perfil = join(tmpdir(), 'gymapp-edge-' + Date.now());
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
