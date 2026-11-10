@@ -25,7 +25,9 @@ function guardar() {
 }
 let tAviso;
 function aviso(texto, { fijo = false } = {}) {
-  document.querySelector('.mensaje')?.remove();
+  const previo = document.querySelector('.mensaje');
+  if (previo && previo.getAttribute('role') === 'alert' && !fijo) return; // un aviso importante no se tapa con uno normal
+  previo?.remove();
   const d = document.createElement('div'); d.className = 'mensaje'; d.setAttribute('role', fijo ? 'alert' : 'status'); d.textContent = texto;
   if (fijo) { const b = document.createElement('button'); b.className = 'btn sec peq'; b.textContent = 'Entendido'; b.style.marginLeft = '8px'; b.onclick = () => d.remove(); d.appendChild(b); }
   document.body.appendChild(d); clearTimeout(tAviso); if (!fijo) tAviso = setTimeout(() => d.remove(), 3000);

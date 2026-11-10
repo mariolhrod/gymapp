@@ -31,7 +31,7 @@ export function validar(d) {
   if (d.perfil !== null && !esObj(d.perfil)) p.push('perfil no válido');
   if (esObj(d.perfil) && d.perfil.peso !== undefined && !noNeg(d.perfil.peso)) p.push('peso del perfil no válido');
   for (const e of Array.isArray(d.entrenos) ? d.entrenos : []) {
-    if (!esObj(e) || typeof e.fecha !== 'string' || !Array.isArray(e.ejercicios)) { p.push('un entreno no es válido'); break; }
+    if (!esObj(e) || typeof e.fecha !== 'string' || Number.isNaN(Date.parse(e.fecha)) || (e.dia !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(e.dia)) || !Array.isArray(e.ejercicios)) { p.push('un entreno no es válido'); break; }
     const malas = e.ejercicios.some((j) => !Array.isArray(j?.series) || j.series.some((s) => !esObj(s) || (s.kg !== null && s.kg !== undefined && !noNeg(s.kg)) || (s.reps !== null && s.reps !== undefined && !noNeg(s.reps))));
     if (malas) { p.push('una serie tiene números no válidos'); break; }
   }

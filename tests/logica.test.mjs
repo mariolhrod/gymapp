@@ -101,8 +101,10 @@ test('una copia dañada no se acepta', () => {
   assert.equal(importar(JSON.stringify({ version: 99 })).ok, false);
   const d = estadoVacio(); d.pesos.push({ fecha: '2026-11-09', kg: -3 });
   assert.equal(importar(JSON.stringify(d)).ok, false);
-  const e = estadoVacio(); e.entrenos.push({ fecha: 'x', ejercicios: [{ ej: 'prensa', series: [{ kg: -1, reps: 5 }] }] });
+  const e = estadoVacio(); e.entrenos.push({ fecha: '2026-11-09T10:00:00Z', ejercicios: [{ ej: 'prensa', series: [{ kg: -1, reps: 5 }] }] });
   assert.ok(validar(e).length > 0);
+  const f = estadoVacio(); f.entrenos.push({ fecha: 'no es fecha', ejercicios: [] });
+  assert.ok(validar(f).length > 0, 'fecha inventada');
 });
 test('guardar se niega con datos no válidos y no pisa lo anterior', () => {
   const m = memoria(); const st = crearAlmacen(m);
