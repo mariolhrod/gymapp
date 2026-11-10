@@ -1,5 +1,5 @@
 // Generado por tools/generar-sw.mjs — no editar a mano.
-const VERSION = 'gym-6d4e77f4d7c1';
+const VERSION = 'gym-18d648c9574f';
 const ARCHIVOS = [
  "./",
  "css/app.css",
@@ -79,7 +79,8 @@ const ARCHIVOS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
+  // cache: 'reload' evita guardar una copia vieja que el navegador tuviera en su caché.
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ARCHIVOS.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));

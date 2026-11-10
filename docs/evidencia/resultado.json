@@ -1,5 +1,5 @@
 {
- "fecha": "2026-11-10T02:57:06.937Z",
+ "fecha": "2026-11-10T03:05:49.542Z",
  "fallos": 0,
  "resultados": [
   {
@@ -31,6 +31,11 @@
    "nombre": "Entreno: arranca el reloj de descanso tras marcar la serie",
    "ok": true,
    "detalle": ""
+  },
+  {
+   "nombre": "Entreno: guarda lo escrito aunque el teclado no avise (iPhone)",
+   "ok": true,
+   "detalle": "{\"kg\":27.5,\"reps\":7,\"hecha\":true}"
   },
   {
    "nombre": "Entreno: rechaza kilos negativos",

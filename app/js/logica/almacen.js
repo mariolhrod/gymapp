@@ -10,7 +10,7 @@ export function estadoVacio() {
     perfil: null,            // { nombre, peso, meta: 'perder'|'mantener'|'ganar', objetivosManual: null|{kcal,p,c,g} }
     planId: null,
     planInicio: null,        // 'YYYY-MM-DD'
-    entrenos: [],            // [{ id, fecha (ISO), planId, diaIndex, terminado, ejercicios: [{ ej, series: [{kg, reps, hecha}] }] }]
+    entrenos: [],            // [{ id, fecha (ISO UTC), dia ('YYYY-MM-DD' local), planId, diaIndex, terminado, descarga, ejercicios: [{ ej, series: [{kg, reps, hecha}] }] }]
     enCurso: null,           // entreno a medias, mismo formato
     comidas: {},             // { 'YYYY-MM-DD': { desayuno: [{ alimentoId, gramos }], almuerzo, cena, snacks, agua } }
     pesos: [],               // [{ fecha: 'YYYY-MM-DD', kg }]
@@ -36,6 +36,22 @@ export function validar(d) {
     if (malas) { p.push('una serie tiene números no válidos'); break; }
   }
   for (const w of Array.isArray(d.pesos) ? d.pesos : []) if (!esObj(w) || !noNeg(w.kg) || typeof w.fecha !== 'string') { p.push('un peso corporal no es válido'); break; }
+  const texto = (x) => typeof x === 'string' && x.length > 0 && x.length <= 80;
+  for (const a of Array.isArray(d.alimentosPropios) ? d.alimentosPropios : []) {
+    if (!esObj(a) || !texto(a.id) || !texto(a.nombre) || !['kcal', 'p', 'c', 'g', 'porcion'].every((k) => noNeg(a[k]))) { p.push('un alimento propio no es válido'); break; }
+  }
+  if (esObj(d.comidas)) {
+    const malo = Object.entries(d.comidas).some(([f, dia]) => !/^\d{4}-\d{2}-\d{2}$/.test(f) || !esObj(dia) || (dia.agua !== undefined && !noNeg(dia.agua)) ||
+      Object.entries(dia).some(([k, v]) => k !== 'agua' && (!Array.isArray(v) || v.some((x) => !esObj(x) || !texto(x.alimentoId) || !noNeg(x.gramos)))));
+    if (malo) p.push('una comida no es válida');
+  }
+  const numONulo = (x) => x === null || x === undefined || noNeg(x);
+  if (d.enCurso !== null && d.enCurso !== undefined) {
+    const e = d.enCurso;
+    const ok = esObj(e) && typeof e.fecha === 'string' && Array.isArray(e.ejercicios) && e.ejercicios.length > 0 && e.ejercicios.every((j) => esObj(j) && texto(j.ej) &&
+      esObj(j.objetivo) && noNeg(j.objetivo.series) && noNeg(j.objetivo.reps) && Array.isArray(j.series) && j.series.every((s) => esObj(s) && numONulo(s.kg) && numONulo(s.reps)));
+    if (!ok) p.push('el entreno empezado no es válido');
+  }
   return p;
 }
 
@@ -56,12 +72,20 @@ export function importar(texto) {
 // storage: objeto con getItem/setItem (localStorage en el navegador, un sustituto en las pruebas).
 export function crearAlmacen(storage) {
   return {
-    cargar() {
+    problemaAlCargar: null,
+    // Si lo guardado no se puede leer, se aparta una copia intacta antes de empezar de cero (nunca se pierde).
+    cargar(ahora = Date.now()) {
       const t = storage.getItem(CLAVE);
       if (!t) return estadoVacio();
       const r = importar(t);
-      return r.ok ? r.datos : estadoVacio();
+      if (r.ok) return r.datos;
+      const clave = `${CLAVE}.ilegible-${ahora}`;
+      try { storage.setItem(clave, t); } catch { /* sin espacio: se avisa igualmente */ }
+      this.problemaAlCargar = { clave, error: r.error };
+      return estadoVacio();
     },
+    // Antes de restaurar una copia, se guardan los datos actuales aparte.
+    respaldar(d) { storage.setItem(`${CLAVE}.antes-de-restaurar`, JSON.stringify(d)); },
     guardar(d) {
       const problemas = validar(d);
       if (problemas.length) throw new Error('Datos no válidos: ' + problemas.join('; '));

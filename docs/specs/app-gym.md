@@ -119,6 +119,11 @@ comidas y revisar su progreso. Persona no técnica: todo en español, con palabr
   *Riesgo:* ninguno: se cambia en «Rutinas».
 - **suposición tomada** — lista de alimentos comunes con valores nutricionales de tablas públicas (USDA). *Base:* son
   datos públicos. *Riesgo:* pocos alimentos al principio; Mario puede crear los suyos.
+- **suposición tomada** (revisión, 2026-11-09) — tras una semana de descarga, la propuesta de peso parte del último
+  entreno normal, no del de descarga. *Base:* la guía presenta la descarga como recuperación para volver «más fuerte».
+  *Riesgo:* ninguno conocido.
+- **suposición tomada** (revisión, 2026-11-09) — cambiar de plan reinicia la cuenta de 8 semanas para la descarga.
+  *Base:* es un plan nuevo. *Riesgo:* si Mario prefiere contar desde el inicio, se cambia.
 - **decisión diferida** — compartir la app con otras personas: exigiría revisar si las rutinas de la guía se pueden
   repartir y añadir avisos de salud. Fuera de este ciclo.
 - **decisión diferida** — secciones de suplementos, postura y estiramientos. Fuera de este ciclo.

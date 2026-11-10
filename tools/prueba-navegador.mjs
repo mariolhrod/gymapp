@@ -66,6 +66,14 @@ try {
     if (e === 0) { await espera(1200); comprobar('Entreno: arranca el reloj de descanso tras marcar la serie', await js(`!document.getElementById('descanso').hidden && /\\d:\\d\\d/.test(document.getElementById('reloj').textContent)`)); await foto('03-entreno'); }
     if (e < nEj - 1) await clic(`button[data-a=ir][data-e="${e + 1}"]`);
   }
+  // Como en el iPhone: escribe sin que se dispare «change» y toca ✓ enseguida.
+  await clic(`button[data-a=hecha][data-e="${nEj - 1}"][data-s="0"]`); await espera(100); // desmarcar
+  await escribir(`input[data-e="${nEj - 1}"][data-s="0"][data-k=kg]`, '27,5', 'input');
+  await escribir(`input[data-e="${nEj - 1}"][data-s="0"][data-k=reps]`, '8', 'input');
+  await js(`(() => { const i = document.querySelector('input[data-e="${nEj - 1}"][data-s="0"][data-k=reps]'); i.value = '7'; return true; })()`); // sin ningún evento
+  await clic(`button[data-a=hecha][data-e="${nEj - 1}"][data-s="0"]`); await espera(200);
+  const sTocada = await js(`JSON.parse(localStorage.getItem("gymapp.datos")).enCurso.ejercicios[${nEj - 1}].series[0]`);
+  comprobar('Entreno: guarda lo escrito aunque el teclado no avise (iPhone)', sTocada.hecha && sTocada.kg === 27.5 && sTocada.reps === 7, JSON.stringify(sTocada));
   await escribir(`input[data-e="${nEj - 1}"][data-s="0"][data-k=kg]`, '-5');
   comprobar('Entreno: rechaza kilos negativos', (await texto()).includes('Los kilos deben ser'));
   await js('location.reload()'); await espera(1500); await ir('#/entreno');

@@ -4,12 +4,12 @@ import { PLANES, PLAN, PLAN_INICIAL } from '../datos/planes.js';
 import { ALIMENTOS, ALIMENTO } from '../datos/alimentos.js';
 import { objetivos, totales, totalesDelDia, COMIDAS, NOMBRE_COMIDA } from '../logica/nutricion.js';
 import { propuesta, leerNumero, semanaDelPlan, esSemanaDescarga, formatoKg } from '../logica/progresion.js';
-import { siguienteDia, ultimaVez, entrenosDeLaSemana, fechaISO, marcasPersonales, evolucion } from '../logica/plan.js';
+import { siguienteDia, ultimaVez, entrenosDeLaSemana, fechaISO, marcasPersonales, evolucion, diaLocal, diasEntre } from '../logica/plan.js';
 import { crearAlmacen, exportar, importar } from '../logica/almacen.js';
 
 const almacen = crearAlmacen(window.localStorage);
 let datos = almacen.cargar();
-const ui = { anadir: null, filtro: '', armadoTerminar: false, ejProgreso: null, crearAlimento: false };
+const ui = { anadir: null, filtro: '', armadoTerminar: false, ejProgreso: null, crearAlimento: false, restaurar: null };
 const $app = document.getElementById('app');
 
 // ---------- utilidades
@@ -20,17 +20,20 @@ const catalogo = () => ({ ...ALIMENTO, ...Object.fromEntries((datos.alimentosPro
 const plan = () => PLAN[datos.planId] || PLAN[PLAN_INICIAL];
 const terminados = () => datos.entrenos.filter((e) => e.terminado !== false);
 function guardar() {
-  try { almacen.guardar(datos); } catch (e) { aviso('No se pudo guardar: ' + e.message); }
+  try { almacen.guardar(datos); return true; }
+  catch (e) { aviso('No se pudo guardar en el teléfono (' + e.message + '). Guarda una copia en Ajustes antes de cerrar la app.', { fijo: true }); return false; }
 }
 let tAviso;
-function aviso(texto) {
+function aviso(texto, { fijo = false } = {}) {
   document.querySelector('.mensaje')?.remove();
-  const d = document.createElement('div'); d.className = 'mensaje'; d.setAttribute('role', 'status'); d.textContent = texto;
-  document.body.appendChild(d); clearTimeout(tAviso); tAviso = setTimeout(() => d.remove(), 3000);
+  const d = document.createElement('div'); d.className = 'mensaje'; d.setAttribute('role', fijo ? 'alert' : 'status'); d.textContent = texto;
+  if (fijo) { const b = document.createElement('button'); b.className = 'btn sec peq'; b.textContent = 'Entendido'; b.style.marginLeft = '8px'; b.onclick = () => d.remove(); d.appendChild(b); }
+  document.body.appendChild(d); clearTimeout(tAviso); if (!fijo) tAviso = setTimeout(() => d.remove(), 3000);
 }
 const ir = (ruta) => { if (location.hash === ruta) render(); else location.hash = ruta; };
 const fechaLarga = (d = new Date()) => { const t = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); return t.charAt(0).toUpperCase() + t.slice(1); };
-const diasDesde = (iso) => Math.max(0, Math.round((new Date(fechaISO()) - new Date(iso.slice(0, 10))) / 86400000));
+// Acepta 'YYYY-MM-DD' (local) o una fecha completa en UTC; cuenta días en la hora del teléfono.
+const diasDesde = (f) => Math.max(0, diasEntre(f.length > 10 ? fechaISO(new Date(f)) : f, fechaISO()));
 const haceTexto = (iso) => { const d = diasDesde(iso); return d === 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`; };
 
 const ICONO = {
@@ -74,7 +77,7 @@ function vHoy() {
   const o = objetivos(datos.perfil); const t = totalesDelDia(datos.comidas[fechaISO()], catalogo());
   let consejo = '';
   for (const x of dia.ejercicios) {
-    const e = EJERCICIO[x.ej]; const pr = propuesta(e.tipo, ultimaVez(x.ej, terminados()), x, { descarga });
+    const e = EJERCICIO[x.ej]; const pr = propuesta(e.tipo, ultimaVez(x.ej, terminados(), { saltarDescarga: true }), x, { descarga });
     if (pr?.motivo === 'subir') { consejo = `${esc(e.nombre)}: hoy toca subir a <b>${formatoKg(pr.kg)} kg</b>. La última vez completaste todas las series.`; break; }
   }
   const boton = datos.enCurso ? `<a class="btn" href="#/entreno">Seguir el entreno empezado</a>` : `<button class="btn" data-a="empezar">Empezar entreno</button>`;
@@ -144,9 +147,9 @@ function crearEntreno() {
   const p = plan(); const idx = siguienteDia(p, terminados());
   const descarga = esSemanaDescarga(semanaDelPlan(datos.planInicio || fechaISO()));
   datos.enCurso = {
-    id: nuevoId(), fecha: new Date().toISOString(), planId: p.id, diaIndex: idx, terminado: false, actual: 0, descansoHasta: null,
+    id: nuevoId(), fecha: new Date().toISOString(), planId: p.id, diaIndex: idx, terminado: false, actual: 0, descansoHasta: null, descarga,
     ejercicios: p.dias[idx].ejercicios.map((x) => {
-      const pr = propuesta(EJERCICIO[x.ej].tipo, ultimaVez(x.ej, terminados()), x, { descarga });
+      const pr = propuesta(EJERCICIO[x.ej].tipo, ultimaVez(x.ej, terminados(), { saltarDescarga: true }), x, { descarga });
       return { ej: x.ej, objetivo: { series: x.series, reps: x.reps }, propuesta: pr, series: Array.from({ length: x.series }, () => ({ kg: pr ? pr.kg : null, reps: null, hecha: false })) };
     }),
   };
@@ -161,14 +164,14 @@ function vEntreno() {
   const antTxt = (n) => { const s = u?.series?.[n]; return s && s.hecha ? (esTiempo ? `${s.reps} s` : `${formatoKg(s.kg)} × ${s.reps}`) : '—'; };
   const filas = x.series.map((s, n) => `<div class="serie ${s.hecha ? 'hecha' : ''}">
       <span class="n">${n + 1}</span><span class="ant">${antTxt(n)}</span>
-      ${esTiempo ? '<span class="sub" style="text-align:center">—</span>' : `<label><span class="oculto">Kilos de la serie ${n + 1}</span><input type="text" inputmode="decimal" data-e="${i}" data-s="${n}" data-k="kg" value="${s.kg ?? ''}" placeholder="${x.propuesta ? formatoKg(x.propuesta.kg) : 'kg'}"></label>`}
-      <label><span class="oculto">${esTiempo ? 'Segundos' : 'Repeticiones'} de la serie ${n + 1}</span><input type="text" inputmode="numeric" data-e="${i}" data-s="${n}" data-k="reps" value="${s.reps ?? ''}" placeholder="${x.objetivo.reps}"></label>
+      ${esTiempo ? '<span class="sub" style="text-align:center">—</span>' : `<label><span class="oculto">Kilos de la serie ${n + 1}</span><input type="text" inputmode="decimal" data-e="${i}" data-s="${n}" data-k="kg" value="${esc(s.kg === null || s.kg === undefined ? '' : formatoKg(s.kg))}" placeholder="${x.propuesta ? esc(formatoKg(x.propuesta.kg)) : 'kg'}"></label>`}
+      <label><span class="oculto">${esTiempo ? 'Segundos' : 'Repeticiones'} de la serie ${n + 1}</span><input type="text" inputmode="numeric" data-e="${i}" data-s="${n}" data-k="reps" value="${esc(s.reps ?? '')}" placeholder="${esc(x.objetivo.reps)}"></label>
       <button class="check ${s.hecha ? 'si' : ''}" data-a="hecha" data-e="${i}" data-s="${n}" aria-label="${s.hecha ? 'Desmarcar' : 'Marcar hecha'} la serie ${n + 1}" aria-pressed="${s.hecha}">${s.hecha ? '✓' : ''}</button>
     </div>`).join('');
   const pr = x.propuesta;
   const consejo = pr ? (pr.motivo === 'subir' ? `La última vez completaste todo: hoy prueba con ${formatoKg(pr.kg)} kg.` : pr.motivo === 'descarga' ? `Semana de descarga: mitad de peso (${formatoKg(pr.kg)} kg).` : `Repite ${formatoKg(pr.kg)} kg hasta completar todas las series.`) : (esTiempo ? 'Aguanta los segundos marcados.' : 'Primera vez: elige un peso con el que hagas las repeticiones con buena técnica.');
   const opciones = EJERCICIOS.filter((z) => z.id !== x.ej).map((z) => `<option value="${z.id}">${esc(z.nombre)}</option>`).join('');
-  const puntos = en.ejercicios.map((z, k) => `<button class="punto ${z.series.every((s) => s.hecha) ? 'hecho' : ''} ${k === i ? 'actual' : ''}" data-a="ir" data-e="${k}" aria-label="Ir al ejercicio ${k + 1}" style="border:0;padding:0;cursor:pointer"></button>`).join('');
+  const puntos = en.ejercicios.map((z, k) => `<button class="punto-btn" data-a="ir" data-e="${k}" aria-label="Ir al ejercicio ${k + 1}: ${esc(EJERCICIO[z.ej]?.nombre)}"><span class="punto ${z.series.every((s) => s.hecha) ? 'hecho' : ''} ${k === i ? 'actual' : ''}"></span></button>`).join('');
   return `<main class="pantalla">
     <div class="cabecera"><button class="volver" data-a="salir">‹ Salir</button><span class="grande" id="duracion"></span>
       <button class="btn peq" data-a="terminar">${ui.armadoTerminar ? '¿Seguro? Toca otra vez' : 'Terminar'}</button></div>
@@ -195,7 +198,7 @@ function terminarEntreno() {
   const en = datos.enCurso; if (!en) return;
   const hechas = en.ejercicios.reduce((n, x) => n + x.series.filter((s) => s.hecha).length, 0);
   if (hechas === 0) { datos.enCurso = null; guardar(); aviso('Entreno descartado: no marcaste ninguna serie.'); ir('#/hoy'); return; }
-  datos.entrenos.push({ id: en.id, fecha: new Date().toISOString(), inicio: en.fecha, planId: en.planId, diaIndex: en.diaIndex, terminado: true,
+  datos.entrenos.push({ id: en.id, fecha: new Date().toISOString(), dia: fechaISO(), inicio: en.fecha, planId: en.planId, diaIndex: en.diaIndex, terminado: true, descarga: !!en.descarga,
     ejercicios: en.ejercicios.map((x) => ({ ej: x.ej, objetivo: x.objetivo, series: x.series.map((s) => ({ kg: s.kg ?? 0, reps: s.reps ?? 0, hecha: !!s.hecha })) })) });
   datos.enCurso = null; guardar(); aviso(`Entreno guardado: ${hechas} series. ¡Buen trabajo!`); ir('#/hoy');
 }
@@ -212,7 +215,7 @@ function vComida(fecha) {
     return `<section class="tarjeta ${ent.length ? '' : 'punteada'}">
       <div class="fila"><b>${NOMBRE_COMIDA[m]}</b><span class="sub">${ent.length ? num(tm.kcal) + ' kcal' : ''}</span>
         <button class="btn naranja peq" data-a="abrir-anadir" data-m="${m}" aria-expanded="${abierto}">${abierto ? 'Cerrar' : '+ Añadir'}</button></div>
-      ${ent.length ? `<div class="lista">${ent.map((x, k) => `<div><span>${esc(cat[x.alimentoId]?.nombre || 'Alimento borrado')} <span class="sub">· ${num(x.gramos)} g · ${num(Math.round((cat[x.alimentoId]?.kcal || 0) * x.gramos / 100))} kcal</span></span><button class="quitar" data-a="quitar" data-m="${m}" data-i="${k}" aria-label="Quitar">×</button></div>`).join('')}</div>` : ''}
+      ${ent.length ? `<div class="lista">${ent.map((x, k) => `<div><span>${esc(cat[x.alimentoId]?.nombre || 'Alimento borrado')} <span class="sub">· ${num(x.gramos)} g · ${num(Math.round((cat[x.alimentoId]?.kcal || 0) * x.gramos / 100))} kcal</span></span><button class="quitar" data-a="quitar" data-f="${f}" data-m="${m}" data-i="${k}" aria-label="Quitar ${esc(cat[x.alimentoId]?.nombre || 'alimento')}">×</button></div>`).join('')}</div>` : ''}
       ${abierto ? vAnadir(m, cat) : ''}
     </section>`;
   }).join('');
@@ -232,7 +235,7 @@ function vComida(fecha) {
     </section>` : `<div class="tarjeta">Añade tu peso en <a href="#/ajustes">Ajustes</a> para calcular tus objetivos.</div>`}
     ${comidas}
     <section class="tarjeta"><div class="fila"><b>Agua</b><span class="sub">${agua} de 8 vasos</span>
-      <span style="display:flex;gap:8px"><button class="btn sec peq" data-a="agua" data-d="-1" aria-label="Quitar un vaso" ${agua ? '' : 'disabled'}>−</button><button class="btn sec peq" data-a="agua" data-d="1" aria-label="Añadir un vaso">+</button></span></div></section>
+      <span style="display:flex;gap:8px"><button class="btn sec peq" data-a="agua" data-f="${f}" data-d="-1" aria-label="Quitar un vaso" ${agua ? '' : 'disabled'}>−</button><button class="btn sec peq" data-a="agua" data-f="${f}" data-d="1" aria-label="Añadir un vaso">+</button></span></div></section>
   </main>${tabs('comida')}`;
 }
 
@@ -241,8 +244,8 @@ function vAnadir(m, cat) {
   if (a.alimentoId) {
     const al = cat[a.alimentoId];
     return `<form id="f-gramos" class="tarjeta" style="background:#20242c" novalidate>
-      <b>${esc(al.nombre)}</b><span class="sub">${al.kcal} kcal · P ${al.p} g · C ${al.c} g · G ${al.g} g por 100 g</span>
-      <label class="campo">Cantidad (gramos)<input type="text" inputmode="decimal" name="gramos" value="${al.porcion}" autofocus></label>
+      <b>${esc(al.nombre)}</b><span class="sub">${num(al.kcal)} kcal · P ${num(al.p)} g · C ${num(al.c)} g · G ${num(al.g)} g por 100 g</span>
+      <label class="campo">Cantidad (gramos)<input type="text" inputmode="decimal" name="gramos" value="${esc(num(al.porcion))}" autofocus></label>
       <p class="error" id="err-gramos" role="alert"></p>
       <div class="fila"><button type="button" class="btn sec peq" data-a="volver-lista">‹ Otro alimento</button><button class="btn naranja" type="submit">Añadir</button></div>
     </form>`;
@@ -268,9 +271,11 @@ function vAnadir(m, cat) {
 const sinAcentos = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 function listaAlimentos(cat) {
   const q = sinAcentos(ui.filtro.trim());
-  const todos = Object.values(cat).filter((a) => !q || sinAcentos(a.nombre).includes(q)).slice(0, 40);
+  // Los alimentos creados por ti van primero.
+  const orden = [...(datos.alimentosPropios || []).map((a) => cat[a.id]).filter(Boolean), ...ALIMENTOS];
+  const todos = orden.filter((a) => !q || sinAcentos(a.nombre).includes(q));
   if (!todos.length) return '<span class="sub">Ninguno coincide. Puedes crearlo.</span>';
-  return todos.map((a) => `<button class="item-boton" data-a="elegir" data-id="${esc(a.id)}"><span>${esc(a.nombre)}</span><span class="sub">${a.kcal} kcal/100 g ›</span></button>`).join('');
+  return todos.map((a) => `<button class="item-boton" data-a="elegir" data-id="${esc(a.id)}"><span>${esc(a.nombre)}</span><span class="sub">${num(a.kcal)} kcal/100 g ›</span></button>`).join('');
 }
 
 // ---------- Progreso
@@ -338,6 +343,11 @@ function vAjustes() {
       <button class="btn sec" data-a="exportar">Guardar una copia</button>
       <label class="btn sec" style="cursor:pointer">Restaurar una copia<input type="file" accept="application/json,.json" id="importar" class="oculto"></label>
     </section>
+    ${ui.restaurar ? `<section class="tarjeta aviso" role="alertdialog" aria-label="Confirmar restauración">
+      <b>¿Reemplazar tus datos por esta copia?</b>
+      <span>La copia tiene ${ui.restaurar.entrenos.length} entrenos y ${ui.restaurar.pesos.length} pesos anotados. Tus datos actuales (${terminados().length} entrenos) se guardan aparte por si te equivocas.</span>
+      <div class="fila"><button class="btn sec peq" data-a="restaurar-no">Cancelar</button><button class="btn naranja peq" data-a="restaurar-si">Reemplazar</button></div>
+    </section>` : ''}
     <section class="tarjeta aviso">Esta app es una ayuda personal para seguir tu plan. No es consejo médico ni nutricional. Si tienes dolor o una lesión, consulta a un profesional.</section>
     <p class="sub">Fotos de ejercicios: free-exercise-db (dominio público). Rutinas y reglas: tu guía de entrenamiento.</p>
   </main>${tabs('hoy')}`;
@@ -361,22 +371,54 @@ function render() {
   if (!datos.perfil) { $app.innerHTML = vInicio(); return; }
   const [, ruta = 'hoy', arg] = (location.hash || '#/hoy').split('/');
   ui.armadoTerminar = ruta === 'entreno' ? ui.armadoTerminar : false;
+  if (ruta !== 'ajustes') ui.restaurar = null;
   const vistas = { hoy: vHoy, rutinas: vRutinas, ficha: () => vFicha(arg), entreno: vEntreno, comida: () => vComida(/^\d{4}-\d{2}-\d{2}$/.test(arg || '') ? arg : null), progreso: vProgreso, ajustes: vAjustes };
-  $app.innerHTML = (vistas[ruta] || vHoy)();
+  try {
+    $app.innerHTML = (vistas[ruta] || vHoy)();
+  } catch (e) {
+    // Nunca dejar la app en blanco: siempre se puede llegar a Ajustes (copia de seguridad).
+    $app.innerHTML = `<main class="pantalla"><h1 class="titulo">Algo no ha ido bien</h1><p class="sub">${esc(e.message)}</p>
+      <a class="btn" href="#/hoy">Ir a Hoy</a>${ruta !== 'ajustes' ? '<a class="btn sec" href="#/ajustes">Ajustes y copia de seguridad</a>' : ''}</main>`;
+  }
   relojTick();
 }
 window.addEventListener('hashchange', () => { ui.anadir = null; ui.crearAlimento = false; ui.filtro = ''; render(); window.scrollTo(0, 0); });
 clearInterval(tReloj); tReloj = setInterval(relojTick, 500);
 
+// ---------- casillas de kilos y repeticiones
+// En el iPhone, tocar un botón con el teclado abierto no siempre avisa del cambio de la casilla: por eso
+// cada acción del entreno vuelve a leer lo escrito antes de actuar.
+function leerCampo(t, { mostrar = true } = {}) {
+  const en = datos.enCurso; if (!en) return true;
+  const x = en.ejercicios[Number(t.dataset.e)]; const s = x?.series[Number(t.dataset.s)]; if (!s) return true;
+  const err = document.getElementById('err-serie');
+  if (t.value.trim() === '') { s[t.dataset.k] = null; t.classList.remove('mal'); return true; }
+  const n = leerNumero(t.value, t.dataset.k === 'reps' ? { max: 1000, decimales: false } : { max: 500 });
+  if (n === null) {
+    if (mostrar) { t.classList.add('mal'); if (err) err.textContent = t.dataset.k === 'reps' ? 'Las repeticiones deben ser un número entero (por ejemplo 10).' : 'Los kilos deben ser un número entre 0 y 500 (por ejemplo 62,5).'; }
+    return false;
+  }
+  t.classList.remove('mal'); s[t.dataset.k] = n; return true;
+}
+function sincronizar() {
+  let ok = true;
+  for (const t of $app.querySelectorAll('input[data-k]')) ok = leerCampo(t) && ok;
+  if (ok) { const err = document.getElementById('err-serie'); if (err) err.textContent = ''; }
+  guardar(); return ok;
+}
+
 // ---------- acciones (un único escuchador para toda la app)
-const fechaComida = () => { const a = (location.hash.split('/')[2] || ''); return /^\d{4}-\d{2}-\d{2}$/.test(a) ? a : fechaISO(); };
+const fechaDe = (b) => (/^\d{4}-\d{2}-\d{2}$/.test(b?.dataset?.f || '') ? b.dataset.f : (() => { const a = (location.hash.split('/')[2] || ''); return /^\d{4}-\d{2}-\d{2}$/.test(a) ? a : fechaISO(); })());
+const fechaComida = () => fechaDe(document.querySelector('[data-f]'));
+const ACCIONES_ENTRENO = new Set(['hecha', 'ir', 'mas-serie', 'terminar']); // «Salir» guarda lo válido y sale siempre
 $app.addEventListener('click', (ev) => {
   const b = ev.target.closest('[data-a]'); if (!b || b.disabled) return;
   const a = b.dataset.a; const en = datos.enCurso;
+  if (en && ACCIONES_ENTRENO.has(a) && !sincronizar()) return;
   if (a === 'atras') { history.length > 1 ? history.back() : ir('#/hoy'); }
   else if (a === 'empezar') { if (!datos.enCurso) crearEntreno(); ir('#/entreno'); }
   else if (a === 'plan') { const id = b.dataset.id; if (id !== datos.planId) { datos.planId = id; datos.planInicio = fechaISO(); guardar(); aviso('Plan cambiado. Tu historial se conserva.'); } render(); }
-  else if (a === 'salir') { ir('#/hoy'); }
+  else if (a === 'salir') { sincronizar(); ir('#/hoy'); }
   else if (a === 'terminar') { if (ui.armadoTerminar) { ui.armadoTerminar = false; terminarEntreno(); } else { ui.armadoTerminar = true; render(); setTimeout(() => { if (ui.armadoTerminar) { ui.armadoTerminar = false; if (location.hash === '#/entreno') render(); } }, 4000); } }
   else if (a === 'ir' && en) { const k = Number(b.dataset.e); if (k >= 0 && k < en.ejercicios.length) { en.actual = k; guardar(); render(); window.scrollTo(0, 0); } }
   else if (a === 'mas-serie' && en) { const x = en.ejercicios[Number(b.dataset.e)]; const ult = x.series[x.series.length - 1]; x.series.push({ kg: ult?.kg ?? null, reps: null, hecha: false }); guardar(); render(); }
@@ -395,37 +437,45 @@ $app.addEventListener('click', (ev) => {
   else if (a === 'elegir') { ui.anadir.alimentoId = b.dataset.id; render(); }
   else if (a === 'volver-lista') { ui.anadir.alimentoId = null; ui.crearAlimento = false; render(); }
   else if (a === 'crear-alimento') { ui.crearAlimento = true; render(); }
-  else if (a === 'quitar') { const f = fechaComida(); datos.comidas[f][b.dataset.m].splice(Number(b.dataset.i), 1); guardar(); render(); }
-  else if (a === 'agua') { const f = fechaComida(); const d = (datos.comidas[f] ||= {}); d.agua = Math.max(0, (d.agua || 0) + Number(b.dataset.d)); guardar(); render(); }
+  else if (a === 'quitar') { const lista = datos.comidas[fechaDe(b)]?.[b.dataset.m]; if (lista) { lista.splice(Number(b.dataset.i), 1); guardar(); } render(); }
+  else if (a === 'agua') { const d = (datos.comidas[fechaDe(b)] ||= {}); d.agua = Math.max(0, (d.agua || 0) + Number(b.dataset.d)); guardar(); render(); }
   else if (a === 'exportar') { exportarCopia(); }
+  else if (a === 'restaurar-no') { ui.restaurar = null; render(); }
+  else if (a === 'restaurar-si' && ui.restaurar) {
+    try { almacen.respaldar(datos); } catch { aviso('No hay espacio para apartar tus datos actuales; no se restaura nada.', { fijo: true }); return; }
+    datos = ui.restaurar; ui.restaurar = null;
+    if (datos.enCurso && datos.enCurso.ejercicios.some((x) => !EJERCICIO[x.ej])) datos.enCurso = null;
+    if (!PLAN[datos.planId]) datos.planId = PLAN_INICIAL;
+    if (guardar()) aviso('Copia restaurada. Tus datos anteriores quedaron guardados aparte.');
+    ir('#/hoy');
+  }
 });
 
 $app.addEventListener('change', (ev) => {
   const t = ev.target;
   if (t.dataset.k && datos.enCurso) {
-    const x = datos.enCurso.ejercicios[Number(t.dataset.e)]; const s = x.series[Number(t.dataset.s)];
-    const err = document.getElementById('err-serie');
-    if (t.value.trim() === '') { s[t.dataset.k] = null; t.classList.remove('mal'); guardar(); return; }
-    const n = leerNumero(t.value, t.dataset.k === 'reps' ? { max: 1000, decimales: false } : { max: 500 });
-    if (n === null) { t.classList.add('mal'); err.textContent = t.dataset.k === 'reps' ? 'Las repeticiones deben ser un número entero (por ejemplo 10).' : 'Los kilos deben ser un número entre 0 y 500 (por ejemplo 62,5).'; return; }
-    t.classList.remove('mal'); err.textContent = ''; s[t.dataset.k] = n; guardar();
+    if (leerCampo(t)) { const err = document.getElementById('err-serie'); if (err && !$app.querySelector('input.mal')) err.textContent = ''; }
+    guardar();
   } else if (t.dataset.cambiar !== undefined && t.value && datos.enCurso) {
-    const x = datos.enCurso.ejercicios[Number(t.dataset.cambiar)]; const e = EJERCICIO[t.value];
-    const pr = propuesta(e.tipo, ultimaVez(t.value, terminados()), x.objetivo);
+    const en = datos.enCurso; const x = en.ejercicios[Number(t.dataset.cambiar)]; const e = EJERCICIO[t.value];
+    if (x.series.some((s) => s.hecha)) { t.value = ''; document.getElementById('err-serie').textContent = 'Ya marcaste series de este ejercicio: no se puede cambiar. Pasa al siguiente.'; return; }
+    const pr = propuesta(e.tipo, ultimaVez(t.value, terminados(), { saltarDescarga: true }), x.objetivo, { descarga: !!en.descarga });
     x.ej = t.value; x.propuesta = pr; x.series = x.series.map(() => ({ kg: pr ? pr.kg : null, reps: null, hecha: false }));
     guardar(); render(); aviso('Ejercicio cambiado por ' + e.nombre + '.');
   } else if (t.dataset.progreso !== undefined) { ui.ejProgreso = t.value; render(); }
   else if (t.id === 'importar' && t.files?.[0]) {
     t.files[0].text().then((texto) => {
-      const r = importar(texto);
-      if (!r.ok) { aviso(r.error + ' Tus datos actuales no se han tocado.'); return; }
-      datos = r.datos; guardar(); aviso('Copia restaurada.'); ir('#/hoy');
+      const r = importar(texto); t.value = '';
+      if (!r.ok) { aviso(r.error + ' Tus datos actuales no se han tocado.', { fijo: true }); return; }
+      ui.restaurar = r.datos; render();
     });
   } else if (t.name === 'manual') { document.getElementById('manuales').hidden = !t.checked; }
 });
 
 $app.addEventListener('input', (ev) => {
-  if (ev.target.id === 'busca') { ui.filtro = ev.target.value; document.getElementById('resultados').innerHTML = listaAlimentos(catalogo()); }
+  const t = ev.target;
+  if (t.id === 'busca') { ui.filtro = t.value; document.getElementById('resultados').innerHTML = listaAlimentos(catalogo()); }
+  else if (t.dataset.k && datos.enCurso && leerCampo(t, { mostrar: false })) guardar(); // se guarda mientras escribes
 });
 
 $app.addEventListener('submit', (ev) => {
@@ -480,4 +530,5 @@ async function exportarCopia() {
 
 // ---------- arranque
 render();
+if (almacen.problemaAlCargar) aviso('No se pudieron leer los datos guardados. Se apartó una copia intacta en el teléfono; restaura una copia de seguridad desde Ajustes.', { fijo: true });
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});

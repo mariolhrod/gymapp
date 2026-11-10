@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { objetivos, totales, totalesDelDia } from '../app/js/logica/nutricion.js';
 import { propuesta, leerNumero, semanaDelPlan, esSemanaDescarga, completoTodo } from '../app/js/logica/progresion.js';
-import { siguienteDia, ultimaVez, entrenosDeLaSemana, marcasPersonales, evolucion } from '../app/js/logica/plan.js';
+import { siguienteDia, ultimaVez, entrenosDeLaSemana, marcasPersonales, evolucion, diaLocal, diasEntre } from '../app/js/logica/plan.js';
 import { estadoVacio, validar, exportar, importar, crearAlmacen } from '../app/js/logica/almacen.js';
 import { PLAN } from '../app/js/datos/planes.js';
 import { ALIMENTO } from '../app/js/datos/alimentos.js';
@@ -110,6 +110,52 @@ test('guardar se niega con datos no válidos y no pisa lo anterior', () => {
   const malo = estadoVacio(); malo.pesos.push({ fecha: 'h', kg: -1 });
   assert.throws(() => st.guardar(malo));
   assert.deepEqual(st.cargar(), bueno);
+});
+// --- Arreglos de la revisión independiente
+test('la semana cuenta el día local guardado, no la fecha UTC', () => {
+  // Domingo 8-nov 21:00 en UTC−5 = lunes 9-nov 02:00 UTC: es un entreno del domingo.
+  const e = { planId: 'torso_pierna', diaIndex: 0, fecha: '2026-11-09T02:00:00Z', dia: '2026-11-08', ejercicios: [] };
+  assert.equal(diaLocal(e), '2026-11-08');
+  assert.equal(entrenosDeLaSemana([e], new Date(2026, 10, 8)), 1);
+  assert.equal(entrenosDeLaSemana([e], new Date(2026, 10, 9)), 0);
+});
+test('días entre fechas sin efecto del cambio de hora', () => {
+  assert.equal(diasEntre('2026-03-07', '2026-03-09'), 2);
+  assert.equal(diasEntre('2026-11-01', '2026-11-02'), 1);
+  assert.equal(diasEntre('2026-11-09', '2026-11-09'), 0);
+});
+test('tras la descarga se propone a partir del peso real, no de la mitad', () => {
+  const h = [
+    { planId: 'tp', diaIndex: 0, fecha: '2026-11-01T10:00:00Z', ejercicios: [{ ej: 'sentadilla_barra', series: s(100, 8, 8, 8, 8).series }] },
+    { planId: 'tp', diaIndex: 0, fecha: '2026-11-08T10:00:00Z', descarga: true, ejercicios: [{ ej: 'sentadilla_barra', series: s(50, 8, 8, 8, 8).series }] },
+  ];
+  assert.equal(ultimaVez('sentadilla_barra', h).series[0].kg, 50);
+  const base = ultimaVez('sentadilla_barra', h, { saltarDescarga: true });
+  assert.equal(base.series[0].kg, 100);
+  assert.equal(propuesta('compuesto', base, { series: 4, reps: 8 }).kg, 102.5);
+});
+test('validar rechaza copias manipuladas que romperían o inyectarían en las pantallas', () => {
+  const malos = [
+    (d) => d.alimentosPropios.push({ id: 'x', nombre: 'Algo', kcal: '<img src=x onerror=alert(1)>', p: 1, c: 1, g: 1, porcion: 100 }),
+    (d) => d.alimentosPropios.push(null),
+    (d) => { d.comidas['2026-11-09'] = { desayuno: [{ alimentoId: 'avena', gramos: '"><img>' }] }; },
+    (d) => { d.comidas['no-es-fecha'] = {}; },
+    (d) => { d.enCurso = { fecha: 'x', ejercicios: [{ ej: 'prensa', objetivo: { series: 3, reps: 12 }, series: [{ kg: '"><img onerror=1>', reps: null }] }] }; },
+    (d) => { d.enCurso = { fecha: 'x', ejercicios: [] }; },
+  ];
+  for (const [k, romper] of malos.entries()) { const d = estadoVacio(); romper(d); assert.ok(validar(d).length > 0, 'caso ' + k); }
+  const bueno = estadoVacio();
+  bueno.alimentosPropios.push({ id: 'propio_1', nombre: 'Arepa', kcal: 220, p: 5, c: 45, g: 2, porcion: 120 });
+  bueno.comidas['2026-11-09'] = { desayuno: [{ alimentoId: 'propio_1', gramos: 120 }], agua: 3 };
+  bueno.enCurso = { fecha: 'x', ejercicios: [{ ej: 'prensa', objetivo: { series: 3, reps: 12 }, series: [{ kg: null, reps: null, hecha: false }] }] };
+  assert.deepEqual(validar(bueno), []);
+});
+test('datos guardados ilegibles: se apartan intactos antes de empezar de cero', () => {
+  const m = memoria(); m.setItem('gymapp.datos', '{"version":1,"roto":');
+  const st = crearAlmacen(m); const d = st.cargar(123);
+  assert.deepEqual(d, estadoVacio());
+  assert.equal(m.getItem('gymapp.datos.ilegible-123'), '{"version":1,"roto":');
+  assert.ok(st.problemaAlCargar);
 });
 test('sin datos guardados, estado vacío', () => {
   assert.deepEqual(crearAlmacen(memoria()).cargar(), estadoVacio());

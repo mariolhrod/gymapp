@@ -44,7 +44,7 @@ export function propuesta(tipo, sesionAnterior, objetivo, { descarga = false } =
 export function semanaDelPlan(inicioISO, hoy = new Date()) {
   const ini = new Date(inicioISO + 'T00:00:00');
   const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-  const dias = Math.floor((d - ini) / 86400000);
+  const dias = Math.round((d - ini) / 86400000); // round: el cambio de hora no resta un día
   return dias < 0 ? 1 : Math.floor(dias / 7) + 1;
 }
 
