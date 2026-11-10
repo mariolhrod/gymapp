@@ -1,0 +1,111 @@
+{
+ "fecha": "2026-11-10T02:57:06.937Z",
+ "fallos": 0,
+ "resultados": [
+  {
+   "nombre": "primer uso: pide los datos",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "primer uso: rechaza un peso no válido",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Hoy: muestra el día A de torso/pierna",
+   "ok": true,
+   "detalle": "Lunes, 9 de noviembre | Hola, Mario | ENTRENO DE HOY · DÍA 1 DE 2 | Día A · Torso | 8 ejercicios · primera vez | Empezar entreno | E"
+  },
+  {
+   "nombre": "Hoy: objetivo 2.250 kcal para 75 kg y mantener",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Entreno: abre el primer ejercicio",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Entreno: arranca el reloj de descanso tras marcar la serie",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Entreno: rechaza kilos negativos",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Entreno: al volver a abrir la app sigue donde lo dejó",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Terminar: guarda el entreno con todas las series",
+   "ok": true,
+   "detalle": "entrenos=1"
+  },
+  {
+   "nombre": "Hoy: tras el día A propone el día B",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Progresión: propone 32,5 kg en el remo tras completar 4×10 a 30",
+   "ok": true,
+   "detalle": "Objetivo: 4 series de 10. La última vez completaste todo: hoy prueba con 32,5 kg."
+  },
+  {
+   "nombre": "Progresión: muestra lo que hizo la vez anterior",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Ficha: las 2 fotos cargan",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Ficha: pasos en español y error común",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Comida: añade 200 g de pollo (330 kcal) y descuenta del objetivo",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Comida: cuenta los vasos de agua",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Progreso: guarda el peso corporal",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Progreso: muestra marcas personales",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Sin internet: la app y las fotos quedan guardadas en el teléfono",
+   "ok": true,
+   "detalle": "75 archivos guardados"
+  },
+  {
+   "nombre": "Sin internet: la app abre y muestra Hoy",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "nombre": "Sin internet: las fotos de los ejercicios se ven",
+   "ok": true,
+   "detalle": ""
+  }
+ ]
+}
