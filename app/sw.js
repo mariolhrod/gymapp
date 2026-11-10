@@ -1,0 +1,91 @@
+// Generado por tools/generar-sw.mjs — no editar a mano.
+const VERSION = 'gym-5d764aedde1a';
+const ARCHIVOS = [
+ "./",
+ "css/app.css",
+ "img/ejercicios/Ab_Crunch_Machine_0.jpg",
+ "img/ejercicios/Ab_Crunch_Machine_1.jpg",
+ "img/ejercicios/Barbell_Glute_Bridge_0.jpg",
+ "img/ejercicios/Barbell_Glute_Bridge_1.jpg",
+ "img/ejercicios/Barbell_Hip_Thrust_0.jpg",
+ "img/ejercicios/Barbell_Hip_Thrust_1.jpg",
+ "img/ejercicios/Barbell_Squat_0.jpg",
+ "img/ejercicios/Barbell_Squat_1.jpg",
+ "img/ejercicios/Bent_Over_Barbell_Row_0.jpg",
+ "img/ejercicios/Bent_Over_Barbell_Row_1.jpg",
+ "img/ejercicios/Butterfly_0.jpg",
+ "img/ejercicios/Butterfly_1.jpg",
+ "img/ejercicios/Cable_Rope_Overhead_Triceps_Extension_0.jpg",
+ "img/ejercicios/Cable_Rope_Overhead_Triceps_Extension_1.jpg",
+ "img/ejercicios/Dumbbell_Bench_Press_0.jpg",
+ "img/ejercicios/Dumbbell_Bench_Press_1.jpg",
+ "img/ejercicios/Dumbbell_Shoulder_Press_0.jpg",
+ "img/ejercicios/Dumbbell_Shoulder_Press_1.jpg",
+ "img/ejercicios/EZ-Bar_Curl_0.jpg",
+ "img/ejercicios/EZ-Bar_Curl_1.jpg",
+ "img/ejercicios/Face_Pull_0.jpg",
+ "img/ejercicios/Face_Pull_1.jpg",
+ "img/ejercicios/Goblet_Squat_0.jpg",
+ "img/ejercicios/Goblet_Squat_1.jpg",
+ "img/ejercicios/Hammer_Curls_0.jpg",
+ "img/ejercicios/Hammer_Curls_1.jpg",
+ "img/ejercicios/Incline_Dumbbell_Curl_0.jpg",
+ "img/ejercicios/Incline_Dumbbell_Curl_1.jpg",
+ "img/ejercicios/Incline_Dumbbell_Flyes_0.jpg",
+ "img/ejercicios/Incline_Dumbbell_Flyes_1.jpg",
+ "img/ejercicios/Incline_Dumbbell_Press_0.jpg",
+ "img/ejercicios/Incline_Dumbbell_Press_1.jpg",
+ "img/ejercicios/Leg_Extensions_0.jpg",
+ "img/ejercicios/Leg_Extensions_1.jpg",
+ "img/ejercicios/Leg_Press_0.jpg",
+ "img/ejercicios/Leg_Press_1.jpg",
+ "img/ejercicios/Leverage_Chest_Press_0.jpg",
+ "img/ejercicios/Leverage_Chest_Press_1.jpg",
+ "img/ejercicios/Leverage_Iso_Row_0.jpg",
+ "img/ejercicios/Leverage_Iso_Row_1.jpg",
+ "img/ejercicios/Leverage_Shoulder_Press_0.jpg",
+ "img/ejercicios/Leverage_Shoulder_Press_1.jpg",
+ "img/ejercicios/Lying_Leg_Curls_0.jpg",
+ "img/ejercicios/Lying_Leg_Curls_1.jpg",
+ "img/ejercicios/One-Arm_Dumbbell_Row_0.jpg",
+ "img/ejercicios/One-Arm_Dumbbell_Row_1.jpg",
+ "img/ejercicios/Plank_0.jpg",
+ "img/ejercicios/Plank_1.jpg",
+ "img/ejercicios/Pullups_0.jpg",
+ "img/ejercicios/Pullups_1.jpg",
+ "img/ejercicios/Romanian_Deadlift_0.jpg",
+ "img/ejercicios/Romanian_Deadlift_1.jpg",
+ "img/ejercicios/Side_Lateral_Raise_0.jpg",
+ "img/ejercicios/Side_Lateral_Raise_1.jpg",
+ "img/ejercicios/Standing_Calf_Raises_0.jpg",
+ "img/ejercicios/Standing_Calf_Raises_1.jpg",
+ "img/ejercicios/Triceps_Pushdown_-_Rope_Attachment_0.jpg",
+ "img/ejercicios/Triceps_Pushdown_-_Rope_Attachment_1.jpg",
+ "img/ejercicios/Wide-Grip_Lat_Pulldown_0.jpg",
+ "img/ejercicios/Wide-Grip_Lat_Pulldown_1.jpg",
+ "img/icono-180.png",
+ "img/icono-192.png",
+ "img/icono-512.png",
+ "index.html",
+ "js/datos/alimentos.js",
+ "js/datos/ejercicios.js",
+ "js/datos/planes.js",
+ "js/logica/almacen.js",
+ "js/logica/nutricion.js",
+ "js/logica/plan.js",
+ "js/logica/progresion.js",
+ "js/ui/app.js",
+ "manifest.webmanifest"
+];
+
+self.addEventListener('install', (e) => {
+  // cache: 'reload' evita guardar una copia vieja que el navegador tuviera en su caché.
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ARCHIVOS.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', (e) => {
+  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then((r) => r || fetch(e.request)));
+});

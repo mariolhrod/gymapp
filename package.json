@@ -1,0 +1,9 @@
+{
+  "name": "gymapp",
+  "private": true,
+  "type": "module",
+  "description": "App personal de gimnasio de Mario: rutinas, entrenos, alimentación y progreso.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}
